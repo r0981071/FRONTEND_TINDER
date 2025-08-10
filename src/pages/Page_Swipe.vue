@@ -7,8 +7,8 @@
       <h3>{{ current.name }}, {{ current.age }}</h3>
       <p>{{ current.bio }}</p>
       <div style="display:flex; gap:12px; justify-content:center; margin-top:8px;">
-        <button @click="swipe(false)">Nope ❌</button>
-        <button @click="swipe(true)">Like ❤️</button>
+        <button @click="swipe(false)">❌</button>
+        <button @click="swipe(true)">❤️</button>
       </div>
     </div>
 
@@ -32,9 +32,10 @@ export default {
     },
     async swipe(is_like){
       if(!this.current) return;
+
       const payload = {
-        swiperId: this.user.user_id,
-        swipedId: this.current.profile_id,
+        swiper_id: this.user.user_id,
+        swiped_id: this.current.profile_id,
         is_like
       };
       await fetch("http://localhost:3000/api/swipes",{
