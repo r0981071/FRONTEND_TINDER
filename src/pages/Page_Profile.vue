@@ -1,67 +1,102 @@
 <template>
   <div>
     <h2>Your Profile</h2>
-    <form @submit.prevent="save" style="max-width:520px; margin:0 auto; text-align:left;">
-      <label>Name</label>
-      <input v-model="form.name" required style="width:100%;" />
 
-      <label>Age</label>
-      <input v-model.number="form.age" type="number" required style="width:100%;" />
+    <form @submit.prevent="save" style="max-width:520px; margin:0 auto; text-align:left; display:grid; gap:10px;">
+      <label>Name
+        <input v-model="form.name" required style="width:100%;" />
+      </label>
 
-      <label>Nationality</label>
-      <input v-model="form.nationallity" style="width:100%;" />
+      <label>Gender
+        <select v-model="form.gender_male" style="width:100%;">
+          <option disabled value="">Select gender</option>
+          <option :value="true">Male</option>
+          <option :value="false">Female</option>
+        </select>
+      </label>
 
-      <label>Bio</label>
-      <textarea v-model="form.bio" style="width:100%;"></textarea>
+      <label>Age
+        <input v-model.number="form.age" type="number" min="18" step="1" style="width:100%;" />
+      </label>
 
-      <label>Photo URL</label>
-      <input v-model="form.profile_pic_url" style="width:100%;" />
+      <label>Nationality
+        <input v-model="form.nationallity" style="width:100%;" />
+      </label>
 
-      <div style="margin-top:10px;">
+      <label>Height (meters)
+        <input v-model.number="form.height" type="number" step="0.01" style="width:100%;" />
+      </label>
+
+      <label>Weight (kg)
+        <input v-model.number="form.weight" type="number" step="0.1" style="width:100%;" />
+      </label>
+
+      <label>Bio
+        <textarea v-model="form.bio" rows="3" style="width:100%;"></textarea>
+      </label>
+
+      <label>Photo URL
+        <input v-model="form.profile_pic_url" style="width:100%;" />
+      </label>
+
+      <div v-if="form.profile_pic_url" style="margin-top:4px;">
+        <small>Preview:</small><br />
+        <img :src="form.profile_pic_url" alt="preview" style="max-width:100%; border:1px solid #eee; padding:4px;" />
+      </div>
+
+      <div style="margin-top:8px;">
         <button type="submit">Save</button>
+        <span v-if="saved" style="color:green; margin-left:8px;">Saved!</span>
       </div>
     </form>
-    <p v-if="saved" style="color:green;">Saved!</p>
   </div>
 </template>
 
 <script>
 export default {
-  name:"Page_Profile",
-  props:{ user:{ type:Object, required:true } },
-  data(){
+  name: "Page_Profile",
+  props: { user: { type: Object, required: true } },
+  data() {
     return {
-      saved:false,
-      form:{
-        userId: this.user.user_id,
-        name:"",
-        gender_male:true,
-        age:18,
-        nationallity:"",
-        height:1.7,
-        weight:70,
-        bio:"",
-        profile_pic_url:"",
-      }
+      saved: false,
+      form: {
+        profile_id: this.user.user_id, // matches backend field
+        name: "",
+        gender_male: "",               // empty until chosen
+        age: null,
+        nationallity: "",
+        height: null,
+        weight: null,
+        bio: "",
+        profile_pic_url: "",
+      },
     };
   },
-  async mounted(){
+  async mounted() {
     const res = await fetch(`http://localhost:3000/api/profiles/${this.user.user_id}`);
-    if(res.ok){
+    if (res.ok) {
       const p = await res.json();
-      Object.assign(this.form, { ...p, userId: this.user.user_id });
+      this.form = { profile_id: this.user.user_id, ...p };
     }
   },
-  methods:{
-    async save(){
+  methods: {
+    async save() {
       this.saved = false;
-      const res = await fetch("http://localhost:3000/api/profiles",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(this.form)
+      const payload = { ...this.form };
+
+      const res = await fetch("http://localhost:3000/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      if(res.ok) this.saved = true;
-    }
-  }
+
+      if (res.ok) {
+        this.saved = true;
+      } else {
+        console.error("Profile save failed", await res.text());
+        alert("Could not save profile.");
+      }
+    },
+  },
 };
 </script>
