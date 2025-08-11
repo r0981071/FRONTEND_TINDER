@@ -35,13 +35,21 @@
         <textarea v-model="form.bio" rows="3" style="width:100%;"></textarea>
       </label>
 
-      <label>Photo URL
-        <input v-model="form.profile_pic_url" style="width:100%;" />
+      <!-- File picker (no text box) -->
+      <label>Profile picture
+        <input type="file" accept="image/png, image/jpeg" @change="onFileChange" />
       </label>
 
-      <div v-if="form.profile_pic_url" style="margin-top:4px;">
+      <!-- Preview -->
+      <div v-if="form.profile_pic_url && !imgError" style="margin-top:4px;">
         <small>Preview:</small><br />
-        <img :src="form.profile_pic_url" alt="preview" style="max-width:100%; border:1px solid #eee; padding:4px;" />
+        <img
+          :src="form.profile_pic_url"
+          alt="preview"
+          style="max-width:100%; border:1px solid #eee; padding:4px;"
+          @error="imgError = true"
+          @load="imgError = false"
+        />
       </div>
 
       <div style="margin-top:8px;">
@@ -59,16 +67,17 @@ export default {
   data() {
     return {
       saved: false,
+      imgError: false,
       form: {
         profile_id: this.user.user_id, // matches backend field
         name: "",
-        gender_male: "",               // empty until chosen
+        gender_male: "",
         age: null,
         nationallity: "",
         height: null,
         weight: null,
         bio: "",
-        profile_pic_url: "",
+        profile_pic_url: "", // gets set automatically after upload
       },
     };
   },
@@ -80,6 +89,28 @@ export default {
     }
   },
   methods: {
+    async onFileChange(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        const res = await fetch("http://localhost:3000/api/uploads", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { url } = await res.json();
+        this.form.profile_pic_url = url;
+        this.imgError = false;
+      } catch (err) {
+        console.error("Upload failed:", err);
+        alert("Upload failed. Please try another image.");
+      }
+    },
+
     async save() {
       this.saved = false;
       const payload = { ...this.form };
