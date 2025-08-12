@@ -46,7 +46,7 @@
 
     <div v-if="current" style="border:1px solid #ccc; padding:1rem; max-width:480px; margin:0 auto;">
       <!-- Photo -->
-      <img :src="current.profile_pic_url" alt="" style="max-width:100%; height:auto;" />
+      <img :src="current.profile_pic_url" alt="" style="width:300px; height:300px;" />
 
       <!-- Name -->
       <h3 style="margin-top:12px;">{{ current.name }}</h3>
