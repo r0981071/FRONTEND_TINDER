@@ -1,5 +1,6 @@
 <template>
-  <div style="display:grid; grid-template-columns: 220px 1fr; gap:16px; max-width:960px; margin:0 auto;">
+  <!-- Show normal UI only if there are matches -->
+  <div v-if="hasMatches" style="display:grid; grid-template-columns: 220px 1fr; gap:16px; max-width:960px; margin:0 auto;">
     <!-- LEFT: matches list -->
     <aside>
       <h3>Your Matches</h3>
@@ -16,30 +17,32 @@
 
     <!-- RIGHT: chat -->
     <section v-if="activeId" class="chat">
-    <div class="thread" ref="thread">
+      <div class="thread" ref="thread">
         <div
-        v-for="(msg, i) in messages"
-        :key="msg.message_id || i"
-        class="row"
-        :class="{ mine: msg.sender_id === user.user_id, theirs: msg.sender_id !== user.user_id }"
+          v-for="(msg, i) in messages"
+          :key="msg.message_id || i"
+          class="row"
+          :class="{ mine: msg.sender_id === user.user_id, theirs: msg.sender_id !== user.user_id }"
         >
-        <div class="bubble">
+          <div class="bubble">
             <p class="text">{{ msg.content }}</p>
+          </div>
         </div>
-        </div>
-    </div>
+      </div>
 
-    <form @submit.prevent="send" class="composer">
+      <form @submit.prevent="send" class="composer">
         <input v-model="text" placeholder="Type a message..." />
         <button type="submit">Send</button>
-    </form>
+      </form>
     </section>
-
 
     <section v-else style="display:flex; align-items:center; justify-content:center;">
       <p>Select a match to chat</p>
     </section>
   </div>
+
+  <!-- Empty state -->
+  <div v-else class="no-matches">You have no matches yet.</div>
 </template>
 
 <script>
@@ -49,122 +52,118 @@ export default {
   data() {
     return {
       matches: [],
-      activeId: null,        // the other user's id you clicked
-      conversationId: null,  // <- store just the conversation_id (IMPORTANT CHANGE)
+      activeId: null,
+      conversationId: null,
       messages: [],
       text: ""
     };
   },
-  //methods
+  computed: {
+    hasMatches() {
+      return Array.isArray(this.matches) && this.matches.length > 0;
+    }
+  },
   methods: {
-  // Load a *denormalized* list of your matches with names
-  async loadMatches() {
-    try {
-      const res = await fetch(`http://localhost:3000/api/matches/list/${this.user.user_id}`);
-      this.matches = res.ok ? await res.json() : [];
-    } catch (e) {
-      console.error("loadMatches failed", e);
-      this.matches = [];
-    }
-  },
-
-  // Open (or create) the conversation vs a given user
-  async open(otherId) {
-    try {
-      this.activeId = otherId;
-      this.messages = [];
-      this.conversationId = null;
-
-      const res = await fetch(
-        `http://localhost:3000/api/conversations/with/${this.user.user_id}/${otherId}`
-      );
-      if (!res.ok) {
-        console.error("open() failed", await res.text());
-        return;
+    async loadMatches() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/matches/list/${this.user.user_id}`);
+        this.matches = res.ok ? await res.json() : [];
+        if (!this.hasMatches) {
+          this.activeId = null;   // ensure chat area doesn't show
+          this.messages = [];
+        }
+      } catch (e) {
+        console.error("loadMatches failed", e);
+        this.matches = [];
+        this.activeId = null;
+        this.messages = [];
       }
+    },
 
-      // Backend returns: { conversation_id, messages }
-      const data = await res.json();
-      this.conversationId = data.conversation_id;
-      this.messages = data.messages || [];
+    async open(otherId) {
+      try {
+        this.activeId = otherId;
+        this.messages = [];
+        this.conversationId = null;
 
-      // scroll to bottom after DOM updates
-      this.$nextTick(() => this.scrollToBottom(true));
-    } catch (e) {
-      console.error("open failed", e);
-    }
-  },
+        const res = await fetch(
+          `http://localhost:3000/api/conversations/with/${this.user.user_id}/${otherId}`
+        );
+        if (!res.ok) {
+          console.error("open() failed", await res.text());
+          return;
+        }
 
-  // Send a message
-  async send() {
-    const text = this.text.trim();
-    if (!text || !this.activeId) return;
+        const data = await res.json();
+        this.conversationId = data.conversation_id;
+        this.messages = data.messages || [];
 
-    try {
-      const payload = {
-        sender_id: this.user.user_id,
-        receiver_id: this.activeId,
-        content: text
-      };
-
-      const res = await fetch("http://localhost:3000/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        console.error("send() failed", await res.text());
-        return;
+        this.$nextTick(() => this.scrollToBottom(true));
+      } catch (e) {
+        console.error("open failed", e);
       }
+    },
 
-      const msg = await res.json(); // message_id, conversation_id, sender_id, receiver_id, content
-      this.messages.push(msg);
-      this.text = "";
+    async send() {
+      const text = this.text.trim();
+      if (!text || !this.activeId) return;
 
-      // force scroll on your own new message
-      this.$nextTick(() => this.scrollToBottom(true));
-    } catch (e) {
-      console.error("send failed", e);
+      try {
+        const payload = {
+          sender_id: this.user.user_id,
+          receiver_id: this.activeId,
+          content: text
+        };
+
+        const res = await fetch("http://localhost:3000/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          console.error("send() failed", await res.text());
+          return;
+        }
+
+        const msg = await res.json();
+        this.messages.push(msg);
+        this.text = "";
+        this.$nextTick(() => this.scrollToBottom(true));
+      } catch (e) {
+        console.error("send failed", e);
+      }
+    },
+
+    scrollToBottom(force = false) {
+      const el = this.$refs.thread;
+      if (!el) return;
+      const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const nearBottom = gap < 80;
+      if (force || nearBottom) {
+        requestAnimationFrame(() => {
+          el.scrollTop = el.scrollHeight;
+        });
+      }
     }
   },
-
-  // Smoothly pins to the bottom when appropriate
-  scrollToBottom(force = false) {
-    const el = this.$refs.thread;
-    if (!el) return;
-
-    // Are we already near the bottom?
-    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const nearBottom = gap < 80; // px tolerance
-
-    if (force || nearBottom) {
-      // allow layout to settle
-      requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight;
-      });
-    }
-  }
-},
 
   mounted() {
     this.loadMatches();
   }
 };
 </script>
+
 <style scoped>
-/* replace your .chat rule */
 .chat {
   display: grid;
   grid-template-rows: 1fr auto;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  height: 65vh;              /* ⬅ fixed height instead of min-height */
-  max-height: 65vh;          /* keep it steady */
-  overflow: hidden;          /* prevent the outer from growing */
+  height: 65vh;
+  max-height: 65vh;
+  overflow: hidden;
 }
-
-/* keep .thread scrollable only inside */
 .thread {
   overflow-y: auto;
   padding: 16px;
@@ -173,11 +172,9 @@ export default {
   gap: 8px;
   max-height: 100%;
 }
-
 .row { display: flex; width: 100%; }
 .row.mine { justify-content: flex-end; }
 .row.theirs { justify-content: flex-start; }
-
 .bubble {
   max-width: 70%;
   padding: 10px 14px;
@@ -186,13 +183,8 @@ export default {
   white-space: pre-wrap;
   box-shadow: 0 1px 0 rgba(0,0,0,0.04);
 }
-.row.mine .bubble {
-  background: #dbeafe; color: #0b3b7e; border-top-right-radius: 6px;
-}
-.row.theirs .bubble {
-  background: #f3f4f6; color: #111827; border-top-left-radius: 6px;
-}
-
+.row.mine .bubble { background: #dbeafe; color: #0b3b7e; border-top-right-radius: 6px; }
+.row.theirs .bubble { background: #f3f4f6; color: #111827; border-top-left-radius: 6px; }
 .composer {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -211,5 +203,14 @@ export default {
   border-radius: 10px; cursor: pointer;
 }
 .composer button:hover { background: #1d4ed8; }
-</style>
 
+/* empty state */
+.no-matches {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height: 50vh;
+  color:#6b7280;
+  font-size: 18px;
+}
+</style>
