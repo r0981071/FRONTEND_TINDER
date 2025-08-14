@@ -1,9 +1,12 @@
 <template>
   <div class="admin">
-    <h2>All Users</h2>
+    <h1 class="admin-title">Administrator Profile</h1>
+    <h2 class="section-title">All Users</h2>
 
     <div v-if="loading" class="muted">Loading…</div>
-    <div v-else-if="users.length === 0" class="muted">No users found (besides admin).</div>
+    <div v-else-if="users.length === 0" class="muted">
+      No users found (besides admin).
+    </div>
 
     <div class="grid">
       <div v-for="u in users" :key="u.user_id" class="card">
@@ -19,18 +22,14 @@
         </div>
 
         <div class="actions">
-          <!-- optional: quick password change -->
           <input
             v-model="pwd[u.user_id]"
             placeholder="new password"
             class="pwd"
             @keyup.enter="changePassword(u.user_id)"
           />
-          <button class="btn" @click="changePassword(u.user_id)">Change PW</button>
-
-          <button class="btn danger" @click="remove(u.user_id)">
-            Delete account
-          </button>
+          <button class="btn" @click="changePassword(u.user_id, pwd[u.user_id])">Change PW</button>
+          <button class="btn danger" @click="remove(u.user_id)">Delete account</button>
         </div>
       </div>
     </div>
@@ -70,26 +69,32 @@ export default {
       e.target.src = this.placeholder;
     },
     async changePassword(userId, newPassword) {
+        const np = (newPassword ?? '').trim();
+        if (!np) {
+            alert('Type a new password first.');
+            return;
+        }
+
         try {
             const res = await fetch(`http://localhost:3000/api/admin/users/${userId}/password`, {
-            method: "POST",
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                "x-admin-user": "admin"
+                'Content-Type': 'application/json',
+                'x-admin-user': 'admin'
             },
-            body: JSON.stringify({ new_password: newPassword })
+            body: JSON.stringify({ new_password: np })
             });
 
             if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || "Failed to update password");
+            throw new Error(err.error || 'Failed to update password');
             }
 
-            alert("Password updated successfully!");
+            alert('Password updated successfully!');
         } catch (e) {
-            alert(e.message || "An error occurred");
+            alert(e.message || 'An error occurred');
         }
-    },
+        },
     async remove(userId) {
       if (!confirm("Delete this user and all related data?")) return;
       try {
@@ -112,7 +117,28 @@ export default {
 </script>
 
 <style scoped>
-.admin { max-width: 900px; margin: 24px auto; padding: 0 12px; }
+.admin {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 20px 16px;
+  background: #f9fafb; /* light background */
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.admin-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 6px;
+}
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 12px 0;
+  color: #374151;
+}
 .muted { color: #6b7280; margin: 12px 0; }
 
 .grid { display: grid; gap: 12px; }
@@ -121,7 +147,10 @@ export default {
   grid-template-columns: 120px 1fr auto;
   gap: 12px;
   align-items: center;
-  border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
 }
 .avatar { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; }
 .info .name { font-weight: 700; }
@@ -129,7 +158,9 @@ export default {
 
 .actions { display: grid; gap: 8px; grid-auto-flow: row; justify-items: end; }
 .pwd {
-  height: 36px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 8px; width: 160px;
+  height: 36px; padding: 0 10px;
+  border: 1px solid #d1d5db; border-radius: 8px;
+  width: 160px;
 }
 .btn {
   height: 36px; padding: 0 12px; border-radius: 8px; cursor: pointer;
