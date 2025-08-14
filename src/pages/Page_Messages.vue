@@ -129,6 +129,10 @@ export default {
 </script>
 
 <style scoped>
+:host, :root, body {
+  background: linear-gradient(180deg, #fff7ec 0%, #fff 40%, #fff 100%);
+}
+
 /* layout */
 .messages-page {
   display: grid;

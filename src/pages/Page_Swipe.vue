@@ -158,85 +158,134 @@ export default {
 
 <style scoped>
 /* shared height for button + filter component */
-:root { --filter-h: 36px; } /* tweak here for shorter/taller */
+:root { --filter-h: 36px; }
 
+/* Page background — very light gradient */
 .page {
-  max-width: 720px;
-  margin: 24px auto;
-  padding: 0 16px;
+  max-width: 840px;
+  margin: 24px auto 48px;
+  padding: 0 16px 24px;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff7ea 100%);
+  border-radius: 20px;
+  box-shadow: 0 12px 35px rgba(255, 166, 0, 0.08);
+  border: 1px solid rgba(255, 171, 0, 0.15);
 }
+
+/* Heading */
 .header {
   display: flex;
   justify-content: center;
-  margin-bottom: 10px;
+  margin: 6px 0 14px;
 }
-.title { margin: 0; }
+.title {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: .3px;
+  text-shadow: 0 1px 0 #fff;
+}
 
+/* Filter bar row */
 .filter-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 18px;
-  height: 44px; /* NEW: fixes height so button & filter match */
+  margin: 0 auto 20px;
+  height: 42px;
 }
 .toggle {
-  height: 100%; /* matches parent height */
+  height: 100%;
   padding: 0 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #ffd39a;
   border-radius: 12px;
-  background: #fff;
+  background: linear-gradient(180deg, #fff7e3 0%, #ffe7b7 100%);
   cursor: pointer;
+  transition: transform .08s ease, box-shadow .12s ease;
+  box-shadow: 0 2px 8px rgba(255, 170, 0, 0.18) inset, 0 2px 6px rgba(0,0,0,.04);
 }
+.toggle:hover { transform: translateY(-1px); }
+.toggle:active { transform: translateY(0); }
 
-/* lets the filter component grow to the right side */
-.flex-1 { flex: 1; max-width: 560px; }
+.flex-1 { flex: 1; max-width: 620px; }
 
+/* Profile card: soft glassy look */
 .card {
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #fff;
-  padding: 16px;
-  max-width: 560px;
+  position: relative;
+  border: 1px solid rgba(255, 179, 71, 0.25);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 18px 18px 14px;
+  max-width: 680px;
   margin: 0 auto;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   text-align: center;
+  box-shadow:
+    0 10px 30px rgba(255, 170, 0, 0.10),
+    0 1px 0 rgba(255,255,255,0.8) inset;
 }
+
+/* Photo inside a framed container */
 .photo {
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   aspect-ratio: 4/3;
   object-fit: cover;
-  border-radius: 12px;
-  margin: 0 auto;
+  border-radius: 14px;
   display: block;
+  margin: 0 auto;
+  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+  border: 6px solid #fff;
 }
-.name { margin: 12px 0 6px; }
-.meta { margin: 4px 0; color: #111827; }
-.bio  { margin-top: 6px; color: #374151; }
 
+/* Name + meta */
+.name { margin: 14px 0 6px; font-size: 22px; }
+.meta { margin: 2px 0; color: #1f2937; opacity: .85; }
+.bio  { margin-top: 8px; color: #394150; }
+
+/* Action buttons row */
 .actions {
   display: flex;
-  gap: 16px;
+  gap: 18px;
   justify-content: center;
-  margin-top: 14px;
+  margin-top: 18px;
 }
+
+/* Big round buttons with soft ring and hover pulse */
 .action {
-  width: 56px;
-  height: 56px;
-  font-size: 22px;
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
   line-height: 1;
   border-radius: 50%;
   cursor: pointer;
-  border: 1px solid #e5e7eb;
+  border: 2px solid #fff;
   background: #fff;
+  box-shadow:
+    0 6px 18px rgba(0,0,0,.08),
+    0 0 0 6px rgba(255, 170, 0, 0.08);
+  transition: transform .1s ease, box-shadow .15s ease;
 }
-.action.like    { border-color: #ef4444; }
-.action.dislike { border-color: #6b7280; }
+.action:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.12),
+    0 0 0 8px rgba(255, 170, 0, 0.12);
+}
+.action:active { transform: translateY(0); }
 
+.action.like {
+  border-color: #ff5a76;
+  color: #ff5a76;
+}
+.action.dislike {
+  border-color: #9aa0a6;
+  color: #9aa0a6;
+}
+
+/* Empty state */
 .empty {
   text-align: center;
   color: #6b7280;
-  margin-top: 24px;
+  margin-top: 32px;
 }
 </style>
