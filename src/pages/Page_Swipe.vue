@@ -18,7 +18,7 @@
       />
     </div>
 
-    <div v-if="current" class="card">
+    <div v-if="current" class="card" :key="current.profile_id">
       <img :src="current.profile_pic_url" alt="" class="photo" />
 
       <h3 class="name">{{ current.name }}</h3>
@@ -68,7 +68,8 @@ export default {
       index: 0,
       loading: false,
       showFilters: true,
-      filters: { gender: "", ageMin: null, ageMax: null }
+      // IMPORTANT: the keys match the child (minAge/maxAge)
+      filters: { gender: "", minAge: null, maxAge: null }
     };
   },
   computed: {
@@ -77,41 +78,54 @@ export default {
       get() {
         return {
           gender: this.filters.gender,
-          minAge: this.filters.ageMin,
-          maxAge: this.filters.ageMax
+          minAge: this.filters.minAge,
+          maxAge: this.filters.maxAge
         };
       },
       set(v) {
         this.filters.gender = v.gender || "";
-        this.filters.ageMin = v.minAge ?? null;
-        this.filters.ageMax = v.maxAge ?? null;
+        this.filters.minAge = v.minAge ?? null;
+        this.filters.maxAge = v.maxAge ?? null;
       }
     },
-    filteredQueue() {
-      const { gender, ageMin, ageMax } = this.filters;
-      return this.queue.filter(p => {
-        if (gender === "male" && !(p.gender_male === true || p.gender_male === 1 || p.gender_male === "true")) return false;
-        if (gender === "female" &&  (p.gender_male === true || p.gender_male === 1 || p.gender_male === "true")) return false;
 
-        const age = Number(p.age);
-        if (Number.isFinite(ageMin) && ageMin !== null && age < ageMin) return false;
-        if (Number.isFinite(ageMax) && ageMax !== null && age > ageMax) return false;
+    // Pure client-side filtering
+    filteredQueue() {
+      const { gender, minAge, maxAge } = this.filters;
+
+      return this.queue.filter(p => {
+        // Gender filter
+        if (gender === "male"   && !p.gender_male) return false;
+        if (gender === "female" &&  p.gender_male) return false;
+
+        // Age filter
+        const age = (p.age === null || p.age === undefined) ? null : Number(p.age);
+        if (minAge != null && age != null && age < Number(minAge)) return false;
+        if (maxAge != null && age != null && age > Number(maxAge)) return false;
 
         return true;
       });
     },
+
     current() {
       return this.filteredQueue[this.index] || null;
     }
   },
+
   watch: {
+    // On ANY filter change, jump to the first matching result
     filters: {
       deep: true,
       handler() {
-        if (this.index >= this.filteredQueue.length) this.index = 0;
+        this.index = 0;
       }
+    },
+    // If the *underlying* queue changes (first load / after swipe), keep index in bounds
+    filteredQueue() {
+      if (this.index >= this.filteredQueue.length) this.index = 0;
     }
   },
+
   methods: {
     genderLabel(val) {
       const b = val === true || val === 1 || val === "true";
@@ -125,13 +139,39 @@ export default {
       const n = Number(w);
       return Number.isFinite(n) ? `${n.toFixed(1)} kg` : "";
     },
+
     async load() {
       this.loading = true;
-      const res = await fetch(`http://localhost:3000/api/profiles/for-swipe/${this.user.user_id}`);
-      this.queue = await res.json();
-      this.index = 0;
-      this.loading = false;
+      try {
+        // Load ONCE (unfiltered) and normalize; client-side filtering does the rest
+        const res = await fetch(`http://localhost:3000/api/profiles/for-swipe/${this.user.user_id}`);
+        const raw = await res.json();
+
+        this.queue = Array.isArray(raw)
+          ? raw.map(p => ({
+              ...p,
+              // normalize so filtering is reliable
+              age:
+                p.age === null || p.age === undefined || p.age === ""
+                  ? null
+                  : Number(p.age),
+              gender_male:
+                p.gender_male === true ||
+                p.gender_male === 1 ||
+                p.gender_male === "1" ||
+                p.gender_male === "true",
+            }))
+          : [];
+
+        this.index = 0;
+      } catch (e) {
+        console.error("load() failed", e);
+        this.queue = [];
+      } finally {
+        this.loading = false;
+      }
     },
+
     async swipe(is_like) {
       if (!this.current) return;
       const swipedId = this.current.profile_id;
@@ -146,10 +186,14 @@ export default {
         }),
       });
 
+      // Remove from *raw* queue so it cannot reappear when filters change
       this.queue = this.queue.filter(p => p.profile_id !== swipedId);
+
+      // keep cursor valid for the new filtered view
       if (this.index >= this.filteredQueue.length) this.index = 0;
     }
   },
+
   mounted() {
     this.load();
   }
@@ -157,7 +201,6 @@ export default {
 </script>
 
 <style scoped>
-/* shared height for button + filter component */
 :root { --filter-h: 36px; }
 
 /* Page background — very light gradient */
@@ -208,7 +251,7 @@ export default {
 
 .flex-1 { flex: 1; max-width: 620px; }
 
-/* Profile card: soft glassy look */
+/* Profile card */
 .card {
   position: relative;
   border: 1px solid rgba(255, 179, 71, 0.25);
@@ -224,7 +267,6 @@ export default {
     0 1px 0 rgba(255,255,255,0.8) inset;
 }
 
-/* Photo inside a framed container */
 .photo {
   width: 100%;
   max-width: 560px;
@@ -237,20 +279,16 @@ export default {
   border: 6px solid #fff;
 }
 
-/* Name + meta */
 .name { margin: 14px 0 6px; font-size: 22px; }
 .meta { margin: 2px 0; color: #1f2937; opacity: .85; }
 .bio  { margin-top: 8px; color: #394150; }
 
-/* Action buttons row */
 .actions {
   display: flex;
   gap: 18px;
   justify-content: center;
   margin-top: 18px;
 }
-
-/* Big round buttons with soft ring and hover pulse */
 .action {
   width: 64px;
   height: 64px;
@@ -272,17 +310,9 @@ export default {
     0 0 0 8px rgba(255, 170, 0, 0.12);
 }
 .action:active { transform: translateY(0); }
+.action.like { border-color: #ff5a76; color: #ff5a76; }
+.action.dislike { border-color: #9aa0a6; color: #9aa0a6; }
 
-.action.like {
-  border-color: #ff5a76;
-  color: #ff5a76;
-}
-.action.dislike {
-  border-color: #9aa0a6;
-  color: #9aa0a6;
-}
-
-/* Empty state */
 .empty {
   text-align: center;
   color: #6b7280;

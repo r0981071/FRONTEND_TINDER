@@ -1,7 +1,5 @@
 <template>
-  <!-- accepts outer class (e.g., flex-1) from parent -->
   <div class="filter-shell" :class="{ collapsed }">
-    <!-- When collapsed we keep the same shell but hide the inputs -->
     <div class="content" v-show="!collapsed">
       <label class="lab">Gender</label>
       <select v-model="local.gender" class="select">
@@ -35,27 +33,42 @@
 export default {
   name: "FilteringComponent",
   props: {
+    /* Vue 3 v-model */
     modelValue: {
+      type: Object,
+      default: () => ({ gender: "", minAge: null, maxAge: null })
+    },
+    /* Vue 2 v-model */
+    value: {
       type: Object,
       default: () => ({ gender: "", minAge: null, maxAge: null })
     },
     collapsed: { type: Boolean, default: false }
   },
-  emits: ["update:modelValue"],
+  /* Vue 3 emits (ignored in Vue 2, harmless) */
+  emits: ["update:modelValue", "input"],
   data() {
-    return { local: { ...this.modelValue } };
+    return {
+      // prefer modelValue (Vue 3); fallback to value (Vue 2)
+      local: { ...(this.modelValue ?? this.value) }
+    };
   },
   watch: {
+    // keep local in sync if parent changes from either prop
+    modelValue: {
+      deep: true,
+      handler(v) { if (v) this.local = { ...v }; }
+    },
+    value: {
+      deep: true,
+      handler(v) { if (v && this.modelValue === undefined) this.local = { ...v }; }
+    },
+    // push changes up for BOTH APIs so parent always receives updates
     local: {
       deep: true,
       handler(v) {
-        this.$emit("update:modelValue", v);
-      }
-    },
-    modelValue: {
-      deep: true,
-      handler(v) {
-        this.local = { ...v };
+        this.$emit("update:modelValue", v); // Vue 3
+        this.$emit("input", v);             // Vue 2
       }
     }
   }
@@ -63,7 +76,6 @@ export default {
 </script>
 
 <style scoped>
-/* keep in sync with PageSwipe.vue's --filter-h */
 :root { --filter-h: 36px; }
 
 .filter-shell {
@@ -71,10 +83,10 @@ export default {
   border-radius: 12px;
   background: #fff;
   padding: 0 12px;
-  height: 44px;              /* NEW: match toggle button height */
+  height: 44px;
   display: flex;
   align-items: center;
-  overflow: hidden;          /* prevents height change on collapse */
+  overflow: hidden;
   box-sizing: border-box;
 }
 .content {
@@ -83,15 +95,13 @@ export default {
   align-items: center;
   width: 100%;
 }
-
 .lab {
   font-size: 13px;
   color: #374151;
   user-select: none;
 }
-.select,
-.input {
-  height: 28px;                       /* shorter controls inside */
+.select, .input {
+  height: 28px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 0 8px;
